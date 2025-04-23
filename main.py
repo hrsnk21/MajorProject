@@ -1,6 +1,5 @@
 import argparse, os
 from getpass import getpass
-
 from encryption import rsa, aes
 from utils import compression, seed
 from steganography import lsb
