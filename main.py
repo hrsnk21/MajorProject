@@ -3,6 +3,34 @@ from getpass import getpass
 from encryption import rsa, aes
 from utils import compression, seed
 from steganography import lsb
+from PIL import Image
+import numpy as np
+import math
+
+def calculate_mse(image1_path, image2_path):
+    """
+    Calculate Mean Squared Error (MSE) between two images.
+    """
+    img1 = np.array(Image.open(image1_path))
+    img2 = np.array(Image.open(image2_path))
+
+    if img1.shape != img2.shape:
+        raise ValueError("Images must have the same dimensions for MSE calculation.")
+
+    mse = np.mean((img1 - img2) ** 2)
+    return mse
+
+def calculate_psnr(image1_path, image2_path):
+    """
+    Calculate Peak Signal-to-Noise Ratio (PSNR) between two images.
+    """
+    mse = calculate_mse(image1_path, image2_path)
+    if mse == 0:
+        return float('inf')  # PSNR is infinite if MSE is zero (images are identical)
+
+    max_pixel_value = 255.0  # Assuming 8-bit images
+    psnr = 20 * math.log10(max_pixel_value / math.sqrt(mse))
+    return psnr
 
 def hide_file(host, secret, pubkey_path, output):
     public_key = rsa.load_public_key(pubkey_path)
@@ -18,6 +46,12 @@ def hide_file(host, secret, pubkey_path, output):
     content = (len(filename).to_bytes(4, 'big') + filename + encrypted_session_key + salt + iv + encrypted)
     s = seed.compute_seed_from_image_dimensions(host)
     lsb.embed(host, output, content, s)
+
+    # Evaluate the quality of the stego image
+    mse = calculate_mse(host, output)
+    psnr = calculate_psnr(host, output)
+    print(f"MSE: {mse}")
+    print(f"PSNR: {psnr} dB")
 
 def extract_file(carrier, privkey_path, output=None):
     passphrase = getpass("Enter private key passphrase: ")
